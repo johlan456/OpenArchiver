@@ -96,6 +96,22 @@ Caddyfile change: edit `/etc/caddy/Caddyfile`, validate
 (`caddy validate --config /etc/caddy/Caddyfile --envfile /etc/caddy/CaddyEnv`), then
 `sudo supervisorctl restart caddy`.
 
+### Known trap: every page takes ~10 s when api.github.com is unreachable
+
+Upstream's root layout `load()` (`packages/frontend/src/routes/+layout.server.ts`) does an
+**awaited, timeout-less** version-check fetch to `api.github.com` on every SSR page and
+`__data.json` request, and only caches the check on success — so on a host where that
+endpoint times out (rather than fast-failing), **every click pays the full ~10 s undici
+connect timeout**. Static assets stay fast, which makes it look like an app/DB problem.
+
+Diagnose: `grep -c "Failed to fetch latest version" /var/log/openarchiver/frontend.log`
+and check Caddy's access log for uniform ~10.5 s durations on `__data.json` requests.
+
+Fix without patching upstream: make the fetch fail instantly —
+`echo "127.0.0.1 api.github.com" >> /etc/hosts` and restart `openarchiver:oa-frontend`.
+Costs only the new-version banner. Remove the pin if the network path gets fixed.
+(Worth an upstream PR: add a timeout and cache failed checks — see BARE-METAL-PLAN.md §9.)
+
 ## 6. Backups
 
 Pre-upgrade dumps land in `/var/backups/openarchiver/` automatically. For scheduled
