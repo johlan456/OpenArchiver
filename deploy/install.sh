@@ -112,6 +112,13 @@ install_node() {
 	else
 		log "Installing pnpm $PNPM_VERSION"
 		run /usr/local/bin/npm install -g "pnpm@${PNPM_VERSION}"
+		# npm -g installs into node's own prefix, not /usr/local/bin — expose it
+		if [[ $DRY_RUN -eq 0 ]]; then
+			local node_bin
+			node_bin="$(dirname "$(readlink -f /usr/local/bin/node)")"
+			[[ -x "$node_bin/pnpm" ]] || die "pnpm not found in $node_bin after npm -g install"
+			ln -sf "$node_bin/pnpm" /usr/local/bin/pnpm
+		fi
 	fi
 }
 
