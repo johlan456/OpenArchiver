@@ -1,0 +1,22 @@
+# Open Archiver reverse proxy.
+# Rendered by install.sh to /etc/caddy/Caddyfile.
+# The frontend (127.0.0.1:3000) is the only proxied service — it proxies
+# /api/* to the backend server-side itself.
+
+@@ARCHIVE_DOMAIN@@ {
+	encode zstd gzip
+
+	# Large PST/mbox uploads pass through here; cap matches BODY_SIZE_LIMIT in .env
+	request_body {
+		max_size 100MB
+	}
+
+	reverse_proxy 127.0.0.1:3000
+
+	log {
+		output file /var/log/caddy/access.log {
+			roll_size 50MiB
+			roll_keep 5
+		}
+	}
+}

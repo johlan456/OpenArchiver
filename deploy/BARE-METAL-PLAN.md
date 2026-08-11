@@ -1,6 +1,8 @@
 # Open Archiver — Bare-Metal (Non-Docker) Deployment Plan
 
-Status: **planning complete, scripts not yet written.**
+Status: **superseded in part — see §11.** The build target changed from systemd to
+Devuan + supervisor; `deploy/DEPLOY.md` is now the operative runbook. This document
+remains the verified-findings record (§1–§6, §9–§10 all still hold).
 Written 2026-08-11 against upstream tag `v0.5.2` (commit `a560b8c`).
 
 This document is the full context for building a non-Docker deployment of Open Archiver.
@@ -242,3 +244,42 @@ Two things worth PRing back once our setup works:
 | **Forward-only migrations** | Mandatory `pg_dump` + snapper snapshot before every upgrade |
 | **Merge conflicts on upgrade** | Additive-only discipline (§7) |
 | **Meilisearch major upgrades** need their own procedure | See `docs/user-guides/upgrade-and-migration/meilisearch-upgrade.md` |
+
+## 11. FAFO deployment decisions (2026-08-11) — deltas from this plan
+
+The first deployment target is a Devuan 6 VM (sysvinit — no systemd), so §8.2's
+systemd units became **supervisor programs**; everything else in this plan carried over.
+The operative runbook is [`DEPLOY.md`](DEPLOY.md); scripts and configs live alongside it.
+
+Decisions taken:
+
+- **All services on one VM** for FAFO. Prod architecture (likely a separate PostgreSQL
+  host) to be confirmed with the senior when the time comes — only a `DATABASE_URL`
+  change, and the supervisor programs use `autorestart` rather than init-order
+  dependencies, so they survive a remote DB unchanged.
+- **Process management:** apt services (PostgreSQL 17, Valkey 8) run under sysvinit;
+  supervisor runs the 5 app processes (group `openarchiver:*`), Meilisearch (static
+  binary — not packaged in Debian), and Caddy (house supervisor pattern: binary at
+  `/usr/local/bin/caddy`, ACME state in `/etc/caddy/ssl`, runs as `www-data`).
+- **`.env` loading:** root pnpm scripts rely on `dotenv-cli`; supervisor can't source
+  env files, so `deploy/bin/oa-run.sh` sources the deployed `.env` and execs each
+  process. It also pins the frontend to `PORT`/`HOST=127.0.0.1` (the SvelteKit adapter
+  ignores `PORT_FRONTEND`) and sidesteps the §6 cwd-sensitive-migration trap.
+- **Values in `.env` are written out explicitly** (no `ORIGIN=$APP_URL` indirection):
+  dotenv does not expand `$VAR`, while the shell wrapper would — the same file must
+  parse identically for both consumers.
+- **Firewall:** the Express backend binds :4000 on all interfaces (upstream code, not
+  patched). FAFO's VM has a directly-routed global IPv6 address, so `deploy/nftables.conf`
+  default-drops inbound except 22/80/443 + ICMP. Prod is behind a FortiGate —
+  `install.sh --no-firewall`.
+- **Snapshots:** pre-upgrade rollback = mandatory `pg_dump` (scripted) + a **Proxmox
+  snapshot** taken by the operator (`upgrade.sh` gates on it; a guest can't snapshot
+  itself). The snapper idea from §8.3 is dropped — the host runs ext4 (FAFO) / ZFS (prod).
+- **Install flags** (§8.1 vs §5 discrepancy resolved): the full
+  `pnpm install --shamefully-hoist --frozen-lockfile --prod=false` everywhere, matching
+  the Dockerfile.
+- **Network reality check:** the FAFO VM is IPv6-first. github.com and
+  dl.caddyserver.com are IPv4-only, so the VM carries a private IPv4 with NAT breakout.
+  Public access is AAAA-only (accepted for FAFO). All other sources (registry.npmjs.org,
+  nodejs.org, apt.postgresql.org, caddyserver.com) have IPv6.
+- **Tika:** still skipped, per §4.

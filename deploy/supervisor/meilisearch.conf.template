@@ -1,0 +1,16 @@
+; Meilisearch under supervisor (no Debian package exists; static binary).
+; Rendered by install.sh to /etc/supervisor/conf.d/meilisearch.conf, mode 600
+; (the rendered file carries the master key).
+
+[program:meilisearch]
+command=/usr/local/bin/meilisearch --env production --db-path /var/lib/meilisearch --http-addr 127.0.0.1:7700
+directory=/var/lib/meilisearch
+user=meilisearch
+environment=MEILI_MASTER_KEY="@@MEILI_MASTER_KEY@@",MEILI_NO_ANALYTICS="true",HOME="/var/lib/meilisearch"
+stdout_logfile=/var/log/openarchiver/meilisearch.log
+stderr_logfile=/var/log/openarchiver/meilisearch.log
+autostart=true
+autorestart=true
+startsecs=10
+startretries=3
+stopwaitsecs=60

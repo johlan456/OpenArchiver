@@ -5,9 +5,11 @@ This is an **additive-only fork** of [LogicLabs-OU/OpenArchiver](https://github.
 
 ## Read this first
 
-👉 **[`deploy/BARE-METAL-PLAN.md`](deploy/BARE-METAL-PLAN.md)** — the full plan: verified
-codebase findings, the 5-process layout, config gotchas, and the list of scripts still to build.
-Read it before doing any work in this repo.
+👉 **[`deploy/DEPLOY.md`](deploy/DEPLOY.md)** — the operative runbook: Devuan + supervisor,
+app at `/srv/openarchiver`, install/upgrade scripts.
+👉 **[`deploy/BARE-METAL-PLAN.md`](deploy/BARE-METAL-PLAN.md)** — the verified codebase
+findings behind it (config gotchas, process layout) + the FAFO decisions log (§11).
+Read both before doing any work in this repo.
 
 ## The one hard rule
 
