@@ -234,6 +234,10 @@ Two things worth PRing back once our setup works:
 2. **Contribute a bare-metal install guide.** If merged, this deployment shape becomes
    semi-supported upstream and future changes account for it — which directly shrinks our
    maintenance burden.
+3. **Fix the version-check stall** in `packages/frontend/src/routes/+layout.server.ts`:
+   the awaited fetch to api.github.com has no timeout and failures aren't cached, so an
+   unreachable endpoint adds ~10 s to every SSR page (hit on FAFO — see DEPLOY.md §5).
+   PR: `AbortSignal.timeout(2000)` + set `lastChecked` in a `finally`.
 
 ## 10. Standing risks
 
