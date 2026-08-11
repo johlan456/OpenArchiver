@@ -232,7 +232,17 @@ setup_firewall() {
 		nft -c -f /etc/nftables.conf || die "nftables ruleset failed validation"
 		nft -f /etc/nftables.conf
 	fi
-	run update-rc.d nftables enable
+	if [[ -x /etc/init.d/nftables ]]; then
+		run update-rc.d nftables enable
+	else
+		# Devuan's nftables package ships no init script — persist via ifupdown hook
+		log "No nftables init script — installing /etc/network/if-pre-up.d/nftables hook"
+		if [[ $DRY_RUN -eq 0 ]]; then
+			printf '#!/bin/sh\n# load host firewall before interfaces come up (installed by OpenArchiver deploy)\n[ "$IFACE" = lo ] || exit 0\nexec /usr/sbin/nft -f /etc/nftables.conf\n' \
+				> /etc/network/if-pre-up.d/nftables
+			chmod 755 /etc/network/if-pre-up.d/nftables
+		fi
+	fi
 }
 
 build_app() {
