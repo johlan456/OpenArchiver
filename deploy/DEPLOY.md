@@ -136,3 +136,7 @@ re-indexed rather than backed up.
 - Prod sits behind a FortiGate — skip the host firewall with
   `install.sh --no-firewall` and let the FortiGate policy expose 80/443 only.
   (nftables stays on for FAFO, where the host has a directly-routed global IPv6 address.)
+- **Test `curl https://api.github.com` from the prod host before go-live** (see the §5
+  trap): on the FAFO network that IP is blackholed on the breakout path — a network
+  issue to raise when prod happens. If prod can't reach it either, apply the same
+  `/etc/hosts` pin; if it can, no pin needed and the version banner works.
