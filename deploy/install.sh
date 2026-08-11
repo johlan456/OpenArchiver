@@ -295,9 +295,13 @@ install_supervisor_programs() {
 	fi
 	run supervisorctl reread
 	run supervisorctl update
-	# programs that hit FATAL on an earlier broken run stay down after update — kick them
 	if [[ $DRY_RUN -eq 0 ]]; then
-		supervisorctl start all >/dev/null 2>&1 || true
+		# the app group must RESTART, not just start: a rebuild replaces hashed
+		# chunk files under any still-running process (stale-manifest 500s)
+		supervisorctl restart 'openarchiver:*' >/dev/null 2>&1 \
+			|| supervisorctl start 'openarchiver:*' >/dev/null 2>&1 || true
+		# caddy/meili only need a kick if a broken earlier run left them FATAL
+		supervisorctl start caddy meilisearch >/dev/null 2>&1 || true
 	fi
 }
 
