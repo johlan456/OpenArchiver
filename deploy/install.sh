@@ -285,7 +285,10 @@ install_supervisor_programs() {
 		run echo "would render meilisearch.conf + Caddyfile + CaddyEnv"
 	fi
 	run chmod +x "$DEPLOY_DIR/bin/oa-run.sh"
-	run service supervisor start
+	# 'start' on an already-running supervisord exits 1 on sysvinit
+	if [[ $DRY_RUN -eq 0 ]] && ! service supervisor status >/dev/null 2>&1; then
+		service supervisor start
+	fi
 	run supervisorctl reread
 	run supervisorctl update
 }
