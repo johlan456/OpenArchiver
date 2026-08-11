@@ -102,7 +102,7 @@ supervisorctl status 'openarchiver:*' || true
 FAILURES=0
 for check in "frontend:http://127.0.0.1:3000/" "backend:http://127.0.0.1:4000/"; do
 	name="${check%%:*}"; url="${check#*:}"
-	code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$url" || echo 000)
+	code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$url" 2>/dev/null) || code="000"
 	if [[ $code == 000 ]]; then
 		warn "$name not responding at $url"
 		FAILURES=$((FAILURES + 1))

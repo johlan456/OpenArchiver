@@ -3,7 +3,9 @@
 ; (the rendered file carries the master key).
 
 [program:meilisearch]
-command=/usr/local/bin/meilisearch --env production --db-path /var/lib/meilisearch --http-addr 127.0.0.1:7700
+; db-path is a subdir: the user's $HOME contains skel dotfiles, and meilisearch
+; refuses a non-empty directory it can't version-infer
+command=/usr/local/bin/meilisearch --env production --db-path /var/lib/meilisearch/data --http-addr 127.0.0.1:7700
 directory=/var/lib/meilisearch
 user=meilisearch
 environment=MEILI_MASTER_KEY="@@MEILI_MASTER_KEY@@",MEILI_NO_ANALYTICS="true",HOME="/var/lib/meilisearch"

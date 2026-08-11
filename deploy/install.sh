@@ -128,6 +128,8 @@ create_users_and_dirs() {
 		|| run useradd --system --home-dir "$APP_HOME" --create-home --shell /usr/sbin/nologin "$APP_USER"
 	id -u meilisearch >/dev/null 2>&1 \
 		|| run useradd --system --home-dir /var/lib/meilisearch --create-home --shell /usr/sbin/nologin meilisearch
+	# meili db lives in a subdir — $HOME itself contains skel dotfiles (see conf template)
+	run install -d -o meilisearch -g meilisearch -m 750 /var/lib/meilisearch/data
 	run install -d -o "$APP_USER" -g "$APP_USER" -m 750 "$DATA_DIR"
 	run install -d -m 755 "$LOG_DIR"
 	run install -d -o www-data -g www-data -m 750 /etc/caddy/ssl /var/log/caddy
@@ -281,6 +283,8 @@ install_supervisor_programs() {
 		printf 'XDG_DATA_HOME=/etc/caddy/ssl\nUSER=www-data\n' > /etc/caddy/CaddyEnv
 		/usr/local/bin/caddy validate --config /etc/caddy/Caddyfile --envfile /etc/caddy/CaddyEnv \
 			|| die "Caddyfile failed validation"
+		# validate runs as root and pre-creates log files caddy (www-data) then can't open
+		chown -R www-data:www-data /var/log/caddy
 	else
 		run echo "would render meilisearch.conf + Caddyfile + CaddyEnv"
 	fi
@@ -291,6 +295,10 @@ install_supervisor_programs() {
 	fi
 	run supervisorctl reread
 	run supervisorctl update
+	# programs that hit FATAL on an earlier broken run stay down after update — kick them
+	if [[ $DRY_RUN -eq 0 ]]; then
+		supervisorctl start all >/dev/null 2>&1 || true
+	fi
 }
 
 health_check() {
@@ -302,7 +310,7 @@ health_check() {
 	for check in "frontend:http://127.0.0.1:3000/" "backend:http://127.0.0.1:4000/" "meilisearch:http://127.0.0.1:7700/health"; do
 		local name="${check%%:*}" url="${check#*:}"
 		local code
-		code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$url" || echo 000)
+		code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$url" 2>/dev/null) || code="000"
 		if [[ $code == 000 ]]; then
 			warn "$name not responding at $url"
 			failures=$((failures + 1))
